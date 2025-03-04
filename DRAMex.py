@@ -5,6 +5,7 @@ import pandas as pd
 from fake_useragent import UserAgent
 from datetime import datetime
 import locale
+import time
 
 # Function to fetch the HTML content from the website
 def fetch_website_content(url):
@@ -64,38 +65,49 @@ def create_folder(folder_path):
 
 # Main function to scrape data, process it, and save it to a CSV file
 def main():
-    # URL of the website to scrape
     base_url = "https://www.dramexchange.com/"
-    
-    # Fetch the website content
-    html_content = fetch_website_content(base_url)
-    
-    # Parse the content using BeautifulSoup
-    soup = BeautifulSoup(html_content, 'html.parser')
-    
-    # Set the locale for datetime formatting (for strptime)
-    locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
-    
-    # Extract table headers and data
-    headers = extract_table_headers(soup)
-    dram_data = extract_dram_data(soup, headers)
-    
-    # Convert the data into a pandas DataFrame
-    data = pd.DataFrame(dram_data, columns=headers)
-    
-    # Prepare the folder for saving the log
     folder_path = './DRAMexchange_Log'
     create_folder(folder_path)
     
-    # Get the formatted timestamp for the filename
-    timestamp = format_timestamp(soup)
-    
-    # Formulate the CSV file name using the timestamp
-    csv_filename = f'{folder_path}/DRAMexchange_{timestamp}.csv'
-    
-    # Save the DataFrame to the CSV file
-    data.to_csv(csv_filename, index=False)
-    print(f"Data saved to {csv_filename}")
+    # Continuously try fetching and saving data until successful
+    while True:
+        try:
+            # Fetch the website content
+            html_content = fetch_website_content(base_url)
+            
+            # Parse the content using BeautifulSoup
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Set the locale for datetime formatting (for strptime)
+            locale.setlocale(locale.LC_TIME, 'en_US.UTF-8')
+            
+            # Extract table headers and data
+            headers = extract_table_headers(soup)
+            dram_data = extract_dram_data(soup, headers)
+            
+            # If no data is fetched, skip this iteration and retry
+            if not dram_data:
+                print("No data found, retrying...")
+                time.sleep(5)  # Sleep for 5 seconds before retrying
+                continue
+            
+            # Convert the data into a pandas DataFrame
+            data = pd.DataFrame(dram_data, columns=headers)
+            
+            # Get the formatted timestamp for the filename
+            timestamp = format_timestamp(soup)
+            
+            # Formulate the CSV file name using the timestamp
+            csv_filename = f'{folder_path}/DRAMexchange_{timestamp}.csv'
+            
+            # Save the DataFrame to the CSV file
+            data.to_csv(csv_filename, index=False)
+            print(f"Data saved to {csv_filename}")
+            break  # Exit the loop once the data is successfully saved
+        
+        except Exception as e:
+            print(f"Error occurred: {e}. Retrying...")
+            time.sleep(5)  # Sleep for 5 seconds before retrying
 
 # Run the main function
 if __name__ == "__main__":
